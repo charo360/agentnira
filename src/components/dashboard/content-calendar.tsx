@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/dashboard/post-card";
 import { generateContentAction } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import type { BrandProfile, GeneratedPost, Platform } from "@/lib/types";
+import type { BrandProfile, GeneratedPost, Platform, NewGeneratedPost } from "@/lib/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type ContentCalendarProps = {
   brandProfile: BrandProfile;
   posts: GeneratedPost[];
-  onPostGenerated: (post: GeneratedPost) => void;
+  onPostGenerated: (post: NewGeneratedPost) => void;
   onPostUpdated: (post: GeneratedPost) => void;
 };
 

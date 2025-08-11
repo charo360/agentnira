@@ -5,8 +5,9 @@ import { analyzeBrand as analyzeBrandFlow, BrandAnalysisResult } from "@/ai/flow
 import { generatePostFromProfile as generatePostFromProfileFlow } from "@/ai/flows/generate-post-from-profile";
 import { generateVideoPost as generateVideoPostFlow } from "@/ai/flows/generate-video-post";
 import { generateCreativeAsset as generateCreativeAssetFlow } from "@/ai/flows/generate-creative-asset";
-import type { BrandProfile, GeneratedPost, Platform, CreativeAsset } from "@/lib/types";
-
+import type { BrandProfile, GeneratedPost, Platform, CreativeAsset, NewGeneratedPost } from "@/lib/types";
+import { db } from "@/lib/firebase";
+import { doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, query, orderBy } from "firebase/firestore";
 
 // --- AI Flow Actions ---
 
@@ -41,7 +42,7 @@ const getAspectRatioForPlatform = (platform: Platform): string => {
 export async function generateContentAction(
   profile: BrandProfile,
   platform: Platform,
-): Promise<GeneratedPost> {
+): Promise<NewGeneratedPost> {
   try {
     const today = new Date();
     const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
@@ -63,15 +64,13 @@ export async function generateContentAction(
         platform: platform,
         aspectRatio: getAspectRatioForPlatform(platform),
       }],
-      // Pass new detailed fields
       services: profile.services,
       targetAudience: profile.targetAudience,
       keyFeatures: profile.keyFeatures,
       competitiveAdvantages: profile.competitiveAdvantages,
     });
 
-    const newPost: GeneratedPost = {
-      id: new Date().toISOString(),
+    const newPost: NewGeneratedPost = {
       date: today.toISOString(),
       content: postDetails.content,
       hashtags: postDetails.hashtags,
@@ -103,11 +102,9 @@ export async function generateVideoContentAction(
     return { videoUrl: result.videoUrl };
   } catch (error) {
     console.error("Error generating video content:", error);
-    // Pass the specific error message from the flow to the client
     throw new Error((error as Error).message);
   }
 }
-
 
 export async function generateCreativeAssetAction(
     prompt: string,
@@ -131,7 +128,66 @@ export async function generateCreativeAssetAction(
         return result;
     } catch (error) {
         console.error("Error generating creative asset:", error);
-        // Always pass the specific error message from the flow to the client.
         throw new Error((error as Error).message);
+    }
+}
+
+
+// --- Firestore Actions ---
+
+export async function saveBrandProfile(userId: string, profile: BrandProfile): Promise<void> {
+    try {
+        const profileRef = doc(db, "profiles", userId);
+        await setDoc(profileRef, profile);
+    } catch (error) {
+        console.error("Error saving brand profile:", error);
+        throw new Error("Could not save your brand profile to the database.");
+    }
+}
+
+export async function getBrandProfile(userId: string): Promise<BrandProfile | null> {
+    try {
+        const profileRef = doc(db, "profiles", userId);
+        const docSnap = await getDoc(profileRef);
+        if (docSnap.exists()) {
+            return docSnap.data() as BrandProfile;
+        }
+        return null;
+    } catch (error) {
+        console.error("Error fetching brand profile:", error);
+        throw new Error("Could not retrieve your brand profile from the database.");
+    }
+}
+
+export async function saveGeneratedPost(userId: string, post: NewGeneratedPost): Promise<GeneratedPost> {
+    try {
+        const postsCollectionRef = collection(db, "profiles", userId, "posts");
+        const docRef = await addDoc(postsCollectionRef, post);
+        return { ...post, id: docRef.id };
+    } catch (error) {
+        console.error("Error saving generated post:", error);
+        throw new Error("Could not save the generated post.");
+    }
+}
+
+export async function updateGeneratedPost(userId: string, post: GeneratedPost): Promise<void> {
+    try {
+        const postRef = doc(db, "profiles", userId, "posts", post.id);
+        await updateDoc(postRef, { ...post });
+    } catch (error) {
+        console.error("Error updating generated post:", error);
+        throw new Error("Could not update the post.");
+    }
+}
+
+export async function getGeneratedPosts(userId: string): Promise<GeneratedPost[]> {
+    try {
+        const postsCollectionRef = collection(db, "profiles", userId, "posts");
+        const q = query(postsCollectionRef, orderBy("date", "desc"));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GeneratedPost));
+    } catch (error) {
+        console.error("Error fetching generated posts:", error);
+        throw new Error("Could not retrieve your posts from the database.");
     }
 }

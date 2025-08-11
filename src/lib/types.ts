@@ -48,6 +48,9 @@ export type GeneratedPost = {
   videoUrl?: string;
 };
 
+// A version of the post for creation where the ID is not yet known
+export type NewGeneratedPost = Omit<GeneratedPost, 'id'>;
+
 
 export type BrandAnalysisResult = {
   visualStyle: string;

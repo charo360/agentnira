@@ -15,18 +15,15 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ContentCalendar } from "@/components/dashboard/content-calendar";
-import type { BrandProfile, GeneratedPost } from "@/lib/types";
+import type { BrandProfile, GeneratedPost, NewGeneratedPost } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { User, LogOut } from "lucide-react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
+import { getBrandProfile, getGeneratedPosts, saveGeneratedPost, updateGeneratedPost } from "@/app/actions";
 
-
-const BRAND_PROFILE_KEY = "brandProfile";
-const GENERATED_POSTS_KEY = "generatedPosts";
-const MAX_POSTS_TO_STORE = 10;
 
 function ContentCalendarPage() {
   const [user, loading] = useAuthState(auth);
@@ -43,48 +40,60 @@ function ContentCalendarPage() {
         return;
     }
     
-    setIsDataLoading(true);
-    try {
-      const storedProfile = localStorage.getItem(BRAND_PROFILE_KEY);
-      if (storedProfile) {
-        setBrandProfile(JSON.parse(storedProfile));
-        const storedPosts = localStorage.getItem(GENERATED_POSTS_KEY);
-        if (storedPosts) {
-          setGeneratedPosts(JSON.parse(storedPosts));
+    const loadData = async () => {
+        setIsDataLoading(true);
+        try {
+            const profile = await getBrandProfile(user.uid);
+            if (profile) {
+                setBrandProfile(profile);
+                const posts = await getGeneratedPosts(user.uid);
+                setGeneratedPosts(posts);
+            } else {
+                toast({
+                    title: "Brand Profile Required",
+                    description: "Redirecting you to set up your brand profile first.",
+                    variant: "destructive"
+                });
+                router.push('/brand-profile');
+            }
+        } catch (error) {
+           toast({
+            variant: "destructive",
+            title: "Failed to load data",
+            description: (error as Error).message,
+          });
+        } finally {
+          setIsDataLoading(false);
         }
-      } else {
-        toast({
-            title: "Brand Profile Required",
-            description: "Redirecting you to set up your brand profile first.",
-            variant: "destructive"
-        });
-        router.push('/brand-profile');
-      }
-    } catch (error) {
-       toast({
-        variant: "destructive",
-        title: "Failed to load data",
-        description: "Could not read your data from local storage. It might be corrupted.",
-      });
-    } finally {
-      setIsDataLoading(false);
-    }
+    };
+    
+    loadData();
+
   }, [user, loading, router, toast]);
 
 
-  const handlePostGenerated = (post: GeneratedPost) => {
-    const newPosts = [post, ...generatedPosts].slice(0, MAX_POSTS_TO_STORE);
-    setGeneratedPosts(newPosts);
-    localStorage.setItem(GENERATED_POSTS_KEY, JSON.stringify(newPosts));
+  const handlePostGenerated = async (post: NewGeneratedPost) => {
+    if (!user) return;
+    try {
+        const savedPost = await saveGeneratedPost(user.uid, post);
+        setGeneratedPosts(prevPosts => [savedPost, ...prevPosts]);
+    } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Failed to save post",
+          description: (error as Error).message,
+        });
+    }
   };
   
   const handlePostUpdated = async (updatedPost: GeneratedPost) => {
+    if (!user) return;
     try {
+      await updateGeneratedPost(user.uid, updatedPost);
       const updatedPosts = generatedPosts.map((post) =>
         post.id === updatedPost.id ? updatedPost : post
       );
       setGeneratedPosts(updatedPosts);
-      localStorage.setItem(GENERATED_POSTS_KEY, JSON.stringify(updatedPosts));
     } catch(error) {
         toast({
           variant: "destructive",
@@ -96,7 +105,7 @@ function ContentCalendarPage() {
 
   const handleLogout = async () => {
     await signOut(auth);
-    localStorage.removeItem(BRAND_PROFILE_KEY);
+    localStorage.removeItem("brandProfileTheme");
     router.push('/login');
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
   };

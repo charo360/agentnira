@@ -28,7 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { BrandProfile, GeneratedPost, Platform, PostVariant } from "@/lib/types";
+import type { BrandProfile, GeneratedPost, Platform, PostVariant, NewGeneratedPost } from "@/lib/types";
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Label } from '../ui/label';
@@ -124,8 +124,12 @@ export function PostCard({ post, brandProfile, onPostUpdated }: PostCardProps) {
     setIsRegenerating(true);
     try {
         const platform = post.variants[0].platform;
-        const newPost = await generateContentAction(brandProfile, platform);
-        onPostUpdated({ ...newPost, id: post.id }); // Keep old id for replacement
+        const newPostContent = await generateContentAction(brandProfile, platform);
+        const updatedPost: GeneratedPost = {
+            ...post, // Retain ID, date, etc.
+            ...newPostContent, // Overwrite with new content
+        };
+        onPostUpdated(updatedPost);
         toast({
             title: "Post Regenerated!",
             description: "A new version of your post has been generated.",

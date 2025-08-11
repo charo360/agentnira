@@ -10,13 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Bot, User, LogOut } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-
-
-const BRAND_PROFILE_KEY = "brandProfile";
+import { getBrandProfile, saveBrandProfile } from "@/app/actions";
 
 function BrandProfilePage() {
   const router = useRouter();
@@ -32,39 +30,55 @@ function BrandProfilePage() {
       return;
     }
 
-    setIsProfileLoading(true);
-    try {
-      const storedProfile = localStorage.getItem(BRAND_PROFILE_KEY);
-      if (storedProfile) {
-        setBrandProfile(JSON.parse(storedProfile));
-      }
-    } catch (error) {
-      console.error("Failed to parse brand profile from localStorage", error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load profile",
-        description: "Could not read your profile from local storage. It might be corrupted.",
-      });
-    } finally {
-      setIsProfileLoading(false);
-    }
+    const fetchProfile = async () => {
+        setIsProfileLoading(true);
+        try {
+            const profile = await getBrandProfile(user.uid);
+            if (profile) {
+                setBrandProfile(profile);
+            }
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Failed to load profile",
+                description: (error as Error).message,
+            });
+        } finally {
+            setIsProfileLoading(false);
+        }
+    };
+    fetchProfile();
   }, [user, loading, toast, router]);
 
   const handleProfileSaved = async (profile: BrandProfile) => {
+    if (!user) {
+        toast({ variant: "destructive", title: "Not Authenticated", description: "You must be logged in to save a profile."});
+        return;
+    }
     try {
         const isFirstSave = !brandProfile;
-        localStorage.setItem(BRAND_PROFILE_KEY, JSON.stringify(profile));
+        await saveBrandProfile(user.uid, profile);
+        
+        // This is a bit of a hack to force a theme refresh.
+        // A more elegant solution might use a global state management library.
+        localStorage.setItem("brandProfileTheme", JSON.stringify({
+            primaryColor: profile.primaryColor,
+            accentColor: profile.accentColor,
+            backgroundColor: profile.backgroundColor,
+        }));
+
         setBrandProfile(profile);
+        
         toast({
             title: "Profile Saved!",
-            description: "Your brand profile has been updated successfully.",
+            description: "Your brand profile has been saved to your account.",
         });
-        
-        // Reload to apply theme colors if they changed
-        window.location.reload();
         
         if (isFirstSave) {
             router.push('/content-calendar');
+        } else {
+            // Force a reload to apply new theme colors from localStorage
+            window.location.reload();
         }
 
     } catch (error) {
@@ -78,7 +92,7 @@ function BrandProfilePage() {
   
   const handleLogout = async () => {
     await signOut(auth);
-    localStorage.removeItem(BRAND_PROFILE_KEY); // Also clear brand profile on logout
+    localStorage.removeItem("brandProfileTheme");
     router.push('/login');
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
   };
