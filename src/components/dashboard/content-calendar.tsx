@@ -75,7 +75,7 @@ export function ContentCalendar({ brandProfile, posts, onPostGenerated, onPostUp
     if (posts.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card p-12 text-center">
-              <h3 className="text-xl font-semibold">Your calendar is empty</h3>
+              <h3 className="text-xl font-semibold">Your content feed is empty</h3>
               <p className="text-muted-foreground mt-2">
                 Click the "Generate New Post" button to create your first social media post!
               </p>
@@ -89,7 +89,7 @@ export function ContentCalendar({ brandProfile, posts, onPostGenerated, onPostUp
     <div className="space-y-6">
       <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight font-headline">Content Calendar</h1>
+          <h1 className="text-2xl font-bold tracking-tight font-headline">Quick Content</h1>
           <p className="text-muted-foreground">
             Generate and manage your social media content from one place.
           </p>

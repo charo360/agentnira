@@ -109,7 +109,7 @@ function ContentCalendarPage() {
       return (
         <SidebarInset>
             <main className="flex-1 flex items-center justify-center">
-                <p>Loading Content Calendar...</p>
+                <p>Loading Quick Content...</p>
             </main>
         </SidebarInset>
       );
