@@ -135,35 +135,48 @@ export async function generateCreativeAssetAction(
 
 // --- Firestore Actions ---
 
+/**
+ * Recursively removes keys with `undefined` values from an object.
+ * This is crucial before sending data to Firestore, which doesn't allow `undefined`.
+ * @param obj The object to clean.
+ * @returns A new object with `undefined` values removed.
+ */
 const cleanUndefined = (obj: any): any => {
     if (obj === null || obj === undefined) {
         return null;
     }
+
+    if (Array.isArray(obj)) {
+        return obj.map(v => cleanUndefined(v));
+    }
+
     if (typeof obj !== 'object') {
         return obj;
     }
-    if (Array.isArray(obj)) {
-        return obj.map(v => cleanUndefined(v)).filter(v => v !== null);
-    }
-    const cleaned = Object.entries(obj)
-        .map(([key, value]) => [key, cleanUndefined(value)])
-        .reduce((acc, [key, value]) => {
-            if (value !== undefined && value !== null) {
-                (acc as any)[key] = value;
-            }
-            return acc;
-        }, {});
 
-    return Object.keys(cleaned).length > 0 ? cleaned : null;
+    const cleaned: { [key: string]: any } = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const value = obj[key];
+            if (value !== undefined) {
+                cleaned[key] = cleanUndefined(value);
+            }
+        }
+    }
+
+    return cleaned;
 };
+
 
 export async function saveBrandProfile(userId: string, profile: BrandProfile): Promise<void> {
     try {
         const profileRef = doc(db, "profiles", userId);
         const cleanedProfile = cleanUndefined(profile);
-        if (!cleanedProfile) {
-             throw new Error("Cleaned profile data is empty.");
+        
+        if (!cleanedProfile || !Object.keys(cleanedProfile).length) {
+             throw new Error("Profile data is empty after cleaning.");
         }
+        
         await setDoc(profileRef, cleanedProfile, { merge: true });
     } catch (error) {
         console.error("Error saving brand profile:", error);

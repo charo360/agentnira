@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { BrandAnalysisResult, BrandProfile } from "@/lib/types";
-import { analyzeBrandAction, saveBrandProfile } from "@/app/actions";
+import { analyzeBrandAction } from "@/app/actions";
 import Image from "next/image";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
@@ -278,36 +278,24 @@ export function BrandSetup({ initialProfile, onProfileSaved }: BrandSetupProps) 
         return;
     }
 
-    // Explicitly construct the profile object to avoid sending form-only fields
-    // and to handle optional fields correctly.
     const profile: BrandProfile = {
-      businessName: formValues.businessName,
-      businessType: formValues.businessType,
-      location: formValues.location,
-      websiteUrl: formValues.websiteUrl,
+      ...formValues,
       logoDataUrl,
-      visualStyle: formValues.visualStyle,
-      writingTone: formValues.writingTone,
-      contentThemes: formValues.contentThemes,
       primaryColor: formValues.primaryColor ? hexToHslString(formValues.primaryColor) : undefined,
       accentColor: formValues.accentColor ? hexToHslString(formValues.accentColor) : undefined,
       backgroundColor: formValues.backgroundColor ? hexToHslString(formValues.backgroundColor) : undefined,
-      description: formValues.description || undefined,
-      services: formValues.services || undefined,
-      targetAudience: formValues.targetAudience || undefined,
-      keyFeatures: formValues.keyFeatures || undefined,
-      competitiveAdvantages: formValues.competitiveAdvantages || undefined,
       contactInfo: {
-        phone: formValues.contactPhone || undefined,
-        email: formValues.contactEmail || undefined,
-        address: formValues.contactAddress || undefined,
+        phone: formValues.contactPhone,
+        email: formValues.contactEmail,
+        address: formValues.contactAddress,
       },
     };
     
     setIsSaving(true);
     try {
-        await saveBrandProfile(user.uid, profile);
-        onProfileSaved(profile); // Call the callback to trigger navigation/reload
+        // onProfileSaved is now called from the parent page, which already has the user.
+        // The parent page will call the server action.
+        onProfileSaved(profile);
     } catch (error) {
         toast({
             variant: "destructive",
@@ -328,7 +316,7 @@ export function BrandSetup({ initialProfile, onProfileSaved }: BrandSetupProps) 
         </p>
       </div>
        <Form {...form}>
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+        <form onSubmit={(e) => {e.preventDefault(); handleSaveProfile();}} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Business Basics</CardTitle>
@@ -501,7 +489,7 @@ export function BrandSetup({ initialProfile, onProfileSaved }: BrandSetupProps) 
           </Card>
 
           <div className="flex justify-end">
-            <Button type="button" onClick={handleSaveProfile} size="lg" disabled={isSaving}>
+            <Button type="submit" size="lg" disabled={isSaving}>
                 {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : (initialProfile ? "Save Changes" : "Save Brand Profile & Continue")}
             </Button>
           </div>
