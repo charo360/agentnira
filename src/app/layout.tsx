@@ -7,6 +7,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import React, { useEffect, useState } from 'react';
 import type { BrandProfile } from '@/lib/types';
+import { usePathname } from 'next/navigation';
 
 
 const BRAND_PROFILE_KEY = "brandProfile";
@@ -58,13 +59,25 @@ function BrandThemeLoader({ children }: { children: React.ReactNode }) {
   )
 }
 
+const AUTH_USER_KEY = 'mockAuthUser';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  
+  const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    const user = localStorage.getItem(AUTH_USER_KEY);
+    setIsLoggedIn(!!user);
+  }, [pathname]); // Re-check on path change
+
+  const showSidebar = isLoggedIn && pathname !== '/login' && pathname !== '/';
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -72,12 +85,22 @@ export default function RootLayout({
         <meta name="description" content="Hyper-local, relevant social media content generation for local businesses" />
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
-          <SidebarProvider>
-              <AppSidebar />
-              <BrandThemeLoader>
+          {isClient ? (
+            showSidebar ? (
+              <SidebarProvider>
+                <AppSidebar />
+                <BrandThemeLoader>
                   {children}
-              </BrandThemeLoader>
-          </SidebarProvider>
+                </BrandThemeLoader>
+              </SidebarProvider>
+            ) : (
+              children
+            )
+          ) : (
+             <div className="flex h-screen w-full items-center justify-center">
+                <p>Loading...</p>
+             </div>
+          )}
           <Toaster />
       </body>
     </html>

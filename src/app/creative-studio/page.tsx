@@ -15,21 +15,41 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChatLayout } from "@/components/studio/chat-layout";
-import { User } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 import { ImageEditor } from "@/components/studio/image-editor";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 const BRAND_PROFILE_KEY = "brandProfile";
+const AUTH_USER_KEY = 'mockAuthUser';
 
 function CreativeStudioPage() {
     const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
     const [editorImage, setEditorImage] = useState<string | null>(null);
+    const router = useRouter();
+    const { toast } = useToast();
 
     useEffect(() => {
+        // Check for auth user
+        const authUser = localStorage.getItem(AUTH_USER_KEY);
+        if (!authUser) {
+          router.push('/login');
+          return;
+        }
+
         const storedProfile = localStorage.getItem(BRAND_PROFILE_KEY);
         if (storedProfile) {
             setBrandProfile(JSON.parse(storedProfile));
         }
-    }, []);
+    }, [router]);
+    
+    const handleLogout = () => {
+        localStorage.removeItem(AUTH_USER_KEY);
+        localStorage.removeItem(BRAND_PROFILE_KEY);
+        router.push('/login');
+        toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    };
+
 
   return (
     <SidebarInset>
@@ -51,6 +71,11 @@ function CreativeStudioPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
+               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
       </header>

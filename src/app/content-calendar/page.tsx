@@ -18,11 +18,12 @@ import { ContentCalendar } from "@/components/dashboard/content-calendar";
 import type { BrandProfile, GeneratedPost } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 
 
 const BRAND_PROFILE_KEY = "brandProfile";
 const GENERATED_POSTS_KEY = "generatedPosts";
+const AUTH_USER_KEY = 'mockAuthUser';
 const MAX_POSTS_TO_STORE = 10;
 
 function ContentCalendarPage() {
@@ -33,6 +34,13 @@ function ContentCalendarPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // Check for auth user
+    const authUser = localStorage.getItem(AUTH_USER_KEY);
+    if (!authUser) {
+      router.push('/login');
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const storedProfile = localStorage.getItem(BRAND_PROFILE_KEY);
@@ -81,6 +89,14 @@ function ContentCalendarPage() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(BRAND_PROFILE_KEY);
+    router.push('/login');
+    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+  };
+
+
   return (
       <SidebarInset>
         <header className="flex h-14 items-center justify-end gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
@@ -96,6 +112,11 @@ function ContentCalendarPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
+               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>

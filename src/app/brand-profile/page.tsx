@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Bot, User } from "lucide-react";
+import { Bot, User, LogOut } from "lucide-react";
 
 
 const BRAND_PROFILE_KEY = "brandProfile";
-const GENERATED_POSTS_KEY = "generatedPosts";
+const AUTH_USER_KEY = 'mockAuthUser';
 
 function BrandProfilePage() {
   const router = useRouter();
@@ -23,6 +23,13 @@ function BrandProfilePage() {
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
+    // Check for auth user
+    const authUser = localStorage.getItem(AUTH_USER_KEY);
+    if (!authUser) {
+      router.push('/login');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const storedProfile = localStorage.getItem(BRAND_PROFILE_KEY);
@@ -39,7 +46,7 @@ function BrandProfilePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, router]);
 
   const handleProfileSaved = async (profile: BrandProfile) => {
     try {
@@ -64,6 +71,13 @@ function BrandProfilePage() {
         });
     }
   };
+  
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(BRAND_PROFILE_KEY); // Also clear brand profile on logout
+    router.push('/login');
+    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+  };
 
   return (
       <SidebarInset>
@@ -80,13 +94,18 @@ function BrandProfilePage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
         <main className="flex-1 overflow-auto p-4 lg:p-6">
             {isLoading ? (
                 <div className="flex h-full items-center justify-center">
-                    <p>Loading Profile from Local Storage...</p>
+                    <p>Loading Profile...</p>
                 </div>
             ) : (
                 <BrandSetup 

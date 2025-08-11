@@ -1,6 +1,8 @@
 // src/app/social-connect/page.tsx
 "use client";
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,10 +21,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Facebook, Instagram, Linkedin, Twitter, User } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Twitter, User, LogOut } from "lucide-react";
+import { useToast } from '@/hooks/use-toast';
 
+const AUTH_USER_KEY = 'mockAuthUser';
+const BRAND_PROFILE_KEY = 'brandProfile';
 
 function SocialConnectPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Check for auth user
+    const authUser = localStorage.getItem(AUTH_USER_KEY);
+    if (!authUser) {
+      router.push('/login');
+      return;
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(BRAND_PROFILE_KEY);
+    router.push('/login');
+    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+  };
+
 
   return (
     <SidebarInset>
@@ -43,6 +67,11 @@ function SocialConnectPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Logout</span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
