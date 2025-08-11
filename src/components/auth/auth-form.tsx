@@ -4,11 +4,11 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +16,8 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
-import { 
-    createUserWithEmailAndPassword, 
+import {
+    createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     GoogleAuthProvider,
     signInWithPopup
@@ -57,20 +57,44 @@ export function AuthForm() {
             });
             router.push('/brand-profile');
         } catch (error: any) {
+            console.error("Authentication error:", error);
+            let errorMessage = error.message;
+
+            // Provide more specific error messages
+            if (error.code === 'auth/email-already-in-use') {
+                errorMessage = 'An account with this email already exists. Try logging in instead.';
+            } else if (error.code === 'auth/weak-password') {
+                errorMessage = 'Password should be at least 6 characters long.';
+            } else if (error.code === 'auth/invalid-email') {
+                errorMessage = 'Please enter a valid email address.';
+            } else if (error.code === 'auth/user-not-found') {
+                errorMessage = 'No account found with this email. Try signing up instead.';
+            } else if (error.code === 'auth/wrong-password') {
+                errorMessage = 'Incorrect password. Please try again.';
+            } else if (error.code === 'auth/popup-closed-by-user') {
+                errorMessage = 'Google sign-in was cancelled.';
+            } else if (error.code === 'auth/popup-blocked') {
+                errorMessage = 'Pop-up blocked. Please allow pop-ups for this site.';
+            }
+
             toast({
                 variant: "destructive",
                 title: "Authentication Failed",
-                description: error.message,
+                description: errorMessage,
             });
         } finally {
             setIsLoading(false);
         }
     };
-    
+
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        console.log('Form submitted with:', { email, password: password ? '***' : 'empty' });
         handleAuthAction('email');
     };
+
+    const isFormValid = email.trim() !== '' && password.trim() !== '';
+    console.log('Form validation:', { email: email.trim(), passwordLength: password.length, isFormValid });
 
     return (
         <Card className="mx-auto max-w-sm w-full">
@@ -96,23 +120,23 @@ export function AuthForm() {
                     <div className="grid gap-2">
                         <div className="flex items-center">
                             <Label htmlFor="password">Password</Label>
-                             {isLogin && (
+                            {isLogin && (
                                 <a href="#" className="ml-auto inline-block text-sm underline">
                                     Forgot your password?
                                 </a>
-                             )}
+                            )}
                         </div>
-                        <Input 
-                            id="password" 
-                            type="password" 
-                            required 
+                        <Input
+                            id="password"
+                            type="password"
+                            required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                         />
                     </div>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                         {isLogin ? 'Login' : 'Create an account'}
+                    <Button type="submit" className="w-full" disabled={isLoading || !isFormValid}>
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isLogin ? 'Login' : 'Create an account'}
                     </Button>
                     <Button variant="outline" className="w-full" type="button" disabled={isLoading} onClick={() => handleAuthAction('google')}>
                         <GoogleIcon />

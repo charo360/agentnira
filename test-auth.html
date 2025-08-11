@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Auth Test</title>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
+</head>
+<body>
+    <h1>Firebase Authentication Test</h1>
+    <div>
+        <input type="email" id="email" placeholder="Email" value="test@example.com">
+        <input type="password" id="password" placeholder="Password" value="Password123!">
+        <button onclick="signUp()">Sign Up</button>
+        <button onclick="signIn()">Sign In</button>
+    </div>
+    <div id="result"></div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            "projectId": "localbuzz-mpkuv",
+            "appId": "1:689428714759:web:3f6b7d195dd4a847c4e1a2",
+            "storageBucket": "localbuzz-mpkuv.firebasestorage.app",
+            "apiKey": "AIzaSyAIQQLuNAc0YhNz4o9LF1Zyw_Fy0nJUfwI",
+            "authDomain": "localbuzz-mpkuv.firebaseapp.com",
+            "measurementId": "",
+            "messagingSenderId": "689428714759"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        function signUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    document.getElementById('result').innerHTML = 'Sign up successful! User: ' + userCredential.user.email;
+                })
+                .catch((error) => {
+                    document.getElementById('result').innerHTML = 'Error: ' + error.message;
+                });
+        }
+
+        function signIn() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    document.getElementById('result').innerHTML = 'Sign in successful! User: ' + userCredential.user.email;
+                })
+                .catch((error) => {
+                    document.getElementById('result').innerHTML = 'Error: ' + error.message;
+                });
+        }
+    </script>
+</body>
+</html>

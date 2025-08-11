@@ -6,22 +6,22 @@ import { generatePostFromProfile as generatePostFromProfileFlow } from "@/ai/flo
 import { generateVideoPost as generateVideoPostFlow } from "@/ai/flows/generate-video-post";
 import { generateCreativeAsset as generateCreativeAssetFlow } from "@/ai/flows/generate-creative-asset";
 import type { BrandProfile, GeneratedPost, Platform, CreativeAsset, NewGeneratedPost } from "@/lib/types";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, query, orderBy } from "firebase/firestore";
 
 // --- AI Flow Actions ---
 
 export async function analyzeBrandAction(
-  websiteUrl: string,
-  designImageUris: string[],
+    websiteUrl: string,
+    designImageUris: string[],
 ): Promise<BrandAnalysisResult> {
-  try {
-    const result = await analyzeBrandFlow({ websiteUrl, designImageUris });
-    return result;
-  } catch (error) {
-    console.error("Error analyzing brand:", error);
-    throw new Error("Failed to analyze brand. Please check the URL and try again.");
-  }
+    try {
+        const result = await analyzeBrandFlow({ websiteUrl, designImageUris });
+        return result;
+    } catch (error) {
+        console.error("Error analyzing brand:", error);
+        throw new Error("Failed to analyze brand. Please check the URL and try again.");
+    }
 }
 
 const getAspectRatioForPlatform = (platform: Platform): string => {
@@ -40,70 +40,70 @@ const getAspectRatioForPlatform = (platform: Platform): string => {
 }
 
 export async function generateContentAction(
-  profile: BrandProfile,
-  platform: Platform,
+    profile: BrandProfile,
+    platform: Platform,
 ): Promise<NewGeneratedPost> {
-  try {
-    const today = new Date();
-    const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
-    const currentDate = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    
-    const postDetails = await generatePostFromProfileFlow({
-      businessType: profile.businessType,
-      location: profile.location,
-      writingTone: profile.writingTone,
-      contentThemes: profile.contentThemes,
-      visualStyle: profile.visualStyle,
-      logoDataUrl: profile.logoDataUrl,
-      primaryColor: profile.primaryColor,
-      accentColor: profile.accentColor,
-      backgroundColor: profile.backgroundColor,
-      dayOfWeek,
-      currentDate,
-      variants: [{
-        platform: platform,
-        aspectRatio: getAspectRatioForPlatform(platform),
-      }],
-      services: profile.services,
-      targetAudience: profile.targetAudience,
-      keyFeatures: profile.keyFeatures,
-      competitiveAdvantages: profile.competitiveAdvantages,
-    });
+    try {
+        const today = new Date();
+        const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
+        const currentDate = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const newPost: NewGeneratedPost = {
-      date: today.toISOString(),
-      content: postDetails.content,
-      hashtags: postDetails.hashtags,
-      status: 'generated',
-      variants: postDetails.variants,
-      imageText: postDetails.imageText,
-    };
+        const postDetails = await generatePostFromProfileFlow({
+            businessType: profile.businessType,
+            location: profile.location,
+            writingTone: profile.writingTone,
+            contentThemes: profile.contentThemes,
+            visualStyle: profile.visualStyle,
+            logoDataUrl: profile.logoDataUrl,
+            primaryColor: profile.primaryColor,
+            accentColor: profile.accentColor,
+            backgroundColor: profile.backgroundColor,
+            dayOfWeek,
+            currentDate,
+            variants: [{
+                platform: platform,
+                aspectRatio: getAspectRatioForPlatform(platform),
+            }],
+            services: profile.services,
+            targetAudience: profile.targetAudience,
+            keyFeatures: profile.keyFeatures,
+            competitiveAdvantages: profile.competitiveAdvantages,
+        });
 
-    return newPost;
-  } catch (error) {
-    console.error("Error generating content:", error);
-    throw new Error("Failed to generate content. Please try again later.");
-  }
+        const newPost: NewGeneratedPost = {
+            date: today.toISOString(),
+            content: postDetails.content,
+            hashtags: postDetails.hashtags,
+            status: 'generated',
+            variants: postDetails.variants,
+            imageText: postDetails.imageText,
+        };
+
+        return newPost;
+    } catch (error) {
+        console.error("Error generating content:", error);
+        throw new Error("Failed to generate content. Please try again later.");
+    }
 }
 
 export async function generateVideoContentAction(
-  profile: BrandProfile,
-  imageText: string,
-  postContent: string,
+    profile: BrandProfile,
+    imageText: string,
+    postContent: string,
 ): Promise<{ videoUrl: string }> {
-  try {
-    const result = await generateVideoPostFlow({
-      businessType: profile.businessType,
-      location: profile.location,
-      visualStyle: profile.visualStyle,
-      imageText: imageText,
-      postContent: postContent,
-    });
-    return { videoUrl: result.videoUrl };
-  } catch (error) {
-    console.error("Error generating video content:", error);
-    throw new Error((error as Error).message);
-  }
+    try {
+        const result = await generateVideoPostFlow({
+            businessType: profile.businessType,
+            location: profile.location,
+            visualStyle: profile.visualStyle,
+            imageText: imageText,
+            postContent: postContent,
+        });
+        return { videoUrl: result.videoUrl };
+    } catch (error) {
+        console.error("Error generating video content:", error);
+        throw new Error((error as Error).message);
+    }
 }
 
 export async function generateCreativeAssetAction(
@@ -172,11 +172,11 @@ export async function saveBrandProfile(userId: string, profile: BrandProfile): P
     try {
         const profileRef = doc(db, "profiles", userId);
         const cleanedProfile = cleanUndefined(profile);
-        
+
         if (!cleanedProfile || !Object.keys(cleanedProfile).length) {
-             throw new Error("Profile data is empty after cleaning.");
+            throw new Error("Profile data is empty after cleaning.");
         }
-        
+
         await setDoc(profileRef, cleanedProfile, { merge: true });
     } catch (error) {
         console.error("Error saving brand profile:", error);
@@ -186,15 +186,45 @@ export async function saveBrandProfile(userId: string, profile: BrandProfile): P
 
 export async function getBrandProfile(userId: string): Promise<BrandProfile | null> {
     try {
-        const profileRef = doc(db, "profiles", userId);
-        const docSnap = await getDoc(profileRef);
-        if (docSnap.exists()) {
-            return docSnap.data() as BrandProfile;
+        console.log("Attempting to fetch brand profile for userId:", userId);
+
+        // Ensure we have current auth context
+        const currentUser = auth.currentUser;
+        console.log("Current auth user:", currentUser?.uid, currentUser?.email);
+
+        if (!currentUser) {
+            console.error("No authenticated user found");
+            throw new Error("User not authenticated");
         }
+
+        const profileRef = doc(db, "profiles", userId);
+        console.log("Profile reference created:", profileRef.path);
+
+        const docSnap = await getDoc(profileRef);
+        console.log("Document snapshot retrieved. Exists:", docSnap.exists());
+
+        if (docSnap.exists()) {
+            const data = docSnap.data() as BrandProfile;
+            console.log("Profile data found:", data);
+            return data;
+        }
+        console.log("No profile document found for user - this is normal for new users");
         return null;
     } catch (error) {
-        console.error("Error fetching brand profile:", error);
-        throw new Error("Could not retrieve your brand profile from the database.");
+        console.error("Detailed error fetching brand profile:", error);
+        console.error("Error code:", (error as any).code);
+        console.error("Error message:", (error as any).message);
+        console.error("Full error object:", error);
+
+        // Check if it's a permissions error (common with Firestore rules)
+        if ((error as any).code === 'permission-denied') {
+            console.error("Permission denied - check Firestore rules");
+            throw new Error("Database access denied. Please check your permissions.");
+        }
+
+        // For other errors, don't throw - just return null and let the user create a profile
+        console.warn("Database error occurred, but allowing user to create new profile");
+        return null;
     }
 }
 
