@@ -8,6 +8,8 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import React, { useEffect, useState } from 'react';
 import type { BrandProfile } from '@/lib/types';
 import { usePathname } from 'next/navigation';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase';
 
 
 const BRAND_PROFILE_KEY = "brandProfile";
@@ -59,24 +61,33 @@ function BrandThemeLoader({ children }: { children: React.ReactNode }) {
   )
 }
 
-const AUTH_USER_KEY = 'mockAuthUser';
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, loading] = useAuthState(auth);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    const user = localStorage.getItem(AUTH_USER_KEY);
-    setIsLoggedIn(!!user);
-  }, [pathname]); // Re-check on path change
+  }, []);
 
-  const showSidebar = isLoggedIn && pathname !== '/login' && pathname !== '/';
+  if (loading) {
+      return (
+        <html lang="en" suppressHydrationWarning>
+            <body className="font-body antialiased">
+                 <div className="flex h-screen w-full items-center justify-center">
+                    <p>Loading...</p>
+                 </div>
+                 <Toaster/>
+            </body>
+        </html>
+      )
+  }
+
+  const showSidebar = !!user && pathname !== '/login' && pathname !== '/';
 
   return (
     <html lang="en" suppressHydrationWarning>

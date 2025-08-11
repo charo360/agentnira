@@ -19,29 +19,31 @@ import type { BrandProfile, GeneratedPost } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { User, LogOut } from "lucide-react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 
 const BRAND_PROFILE_KEY = "brandProfile";
 const GENERATED_POSTS_KEY = "generatedPosts";
-const AUTH_USER_KEY = 'mockAuthUser';
 const MAX_POSTS_TO_STORE = 10;
 
 function ContentCalendarPage() {
+  const [user, loading] = useAuthState(auth);
   const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check for auth user
-    const authUser = localStorage.getItem(AUTH_USER_KEY);
-    if (!authUser) {
-      router.push('/login');
-      return;
+    if (loading) return;
+    if (!user) {
+        router.push('/login');
+        return;
     }
     
-    setIsLoading(true);
+    setIsDataLoading(true);
     try {
       const storedProfile = localStorage.getItem(BRAND_PROFILE_KEY);
       if (storedProfile) {
@@ -51,7 +53,11 @@ function ContentCalendarPage() {
           setGeneratedPosts(JSON.parse(storedPosts));
         }
       } else {
-        // If no profile, redirect to setup
+        toast({
+            title: "Brand Profile Not Found",
+            description: "Please set up your brand profile first.",
+            variant: "destructive"
+        });
         router.push('/brand-profile');
       }
     } catch (error) {
@@ -61,13 +67,12 @@ function ContentCalendarPage() {
         description: "Could not read your data from local storage. It might be corrupted.",
       });
     } finally {
-      setIsLoading(false);
+      setIsDataLoading(false);
     }
-  }, [router, toast]);
+  }, [user, loading, router, toast]);
 
 
   const handlePostGenerated = (post: GeneratedPost) => {
-    // Add the new post and slice the array to only keep the most recent ones
     const newPosts = [post, ...generatedPosts].slice(0, MAX_POSTS_TO_STORE);
     setGeneratedPosts(newPosts);
     localStorage.setItem(GENERATED_POSTS_KEY, JSON.stringify(newPosts));
@@ -89,12 +94,22 @@ function ContentCalendarPage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem(AUTH_USER_KEY);
+  const handleLogout = async () => {
+    await signOut(auth);
     localStorage.removeItem(BRAND_PROFILE_KEY);
     router.push('/login');
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
   };
+  
+  if (loading || isDataLoading) {
+      return (
+        <SidebarInset>
+            <main className="flex-1 flex items-center justify-center">
+                <p>Loading Content Calendar...</p>
+            </main>
+        </SidebarInset>
+      );
+  }
 
 
   return (
@@ -104,14 +119,14 @@ function ContentCalendarPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">
                 <Avatar>
-                  <AvatarImage src="https://placehold.co/40x40.png" alt="User" data-ai-hint="user avatar" />
+                  <AvatarImage src={user?.photoURL || "https://placehold.co/40x40.png"} alt={user?.displayName || "User"} data-ai-hint="user avatar" />
                   <AvatarFallback><User /></AvatarFallback>
                 </Avatar>
                 <span className="sr-only">Toggle user menu</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>{user?.email || "My Account"}</DropdownMenuLabel>
                <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -121,7 +136,7 @@ function ContentCalendarPage() {
           </DropdownMenu>
         </header>
         <main className="flex-1 overflow-auto p-4 lg:p-6">
-          {isLoading || !brandProfile ? (
+          {!brandProfile ? (
             <div className="flex h-full items-center justify-center">
               <p>Loading Content Calendar...</p>
             </div>

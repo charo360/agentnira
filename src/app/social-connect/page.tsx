@@ -23,30 +23,40 @@ import {
 } from "@/components/ui/card";
 import { Facebook, Instagram, Linkedin, Twitter, User, LogOut } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
-const AUTH_USER_KEY = 'mockAuthUser';
 const BRAND_PROFILE_KEY = 'brandProfile';
 
 function SocialConnectPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [user, loading] = useAuthState(auth);
 
   useEffect(() => {
-    // Check for auth user
-    const authUser = localStorage.getItem(AUTH_USER_KEY);
-    if (!authUser) {
+    if (loading) return;
+    if (!user) {
       router.push('/login');
-      return;
     }
-  }, [router]);
+  }, [user, loading, router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem(AUTH_USER_KEY);
+  const handleLogout = async () => {
+    await signOut(auth);
     localStorage.removeItem(BRAND_PROFILE_KEY);
     router.push('/login');
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
   };
 
+  if (loading) {
+     return (
+        <SidebarInset>
+            <main className="flex-1 flex items-center justify-center">
+                <p>Loading...</p>
+            </main>
+        </SidebarInset>
+     );
+  }
 
   return (
     <SidebarInset>
@@ -56,8 +66,8 @@ function SocialConnectPage() {
             <Button variant="secondary" size="icon" className="rounded-full">
               <Avatar>
                 <AvatarImage
-                  src="https://placehold.co/40x40.png"
-                  alt="User"
+                  src={user?.photoURL || "https://placehold.co/40x40.png"}
+                  alt={user?.displayName || "User"}
                   data-ai-hint="user avatar"
                 />
                 <AvatarFallback><User /></AvatarFallback>
@@ -66,7 +76,7 @@ function SocialConnectPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>{user?.email || "My Account"}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />

@@ -15,8 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-
-const AUTH_USER_KEY = 'mockAuthUser';
+import { auth } from '@/lib/firebase';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup
+} from 'firebase/auth';
 
 const GoogleIcon = () => (
     <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
@@ -28,36 +33,43 @@ const GoogleIcon = () => (
 export function AuthForm() {
     const [isLogin, setIsLogin] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const router = useRouter();
     const { toast } = useToast();
 
+    const handleAuthAction = async (action: 'email' | 'google') => {
+        setIsLoading(true);
+        try {
+            if (action === 'google') {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+            } else {
+                if (isLogin) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                }
+            }
+            toast({
+                title: isLogin ? "Login Successful!" : "Account Created!",
+                description: "You are now logged in.",
+            });
+            router.push('/brand-profile');
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Authentication Failed",
+                description: error.message,
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        setIsLoading(true);
-
-        // Simulate a network request
-        setTimeout(() => {
-            // Mock authentication: In a real app, you'd call Firebase Auth here.
-            // For now, we'll just store a mock user in localStorage.
-            try {
-                localStorage.setItem(AUTH_USER_KEY, JSON.stringify({ email: 'user@example.com', loggedIn: true }));
-                toast({
-                    title: "Success!",
-                    description: "You have been successfully logged in.",
-                });
-                 // Redirect to the brand profile page to start app usage
-                 router.push('/brand-profile');
-                 router.refresh(); // Refresh to update layout server components
-            } catch (error) {
-                 toast({
-                    variant: "destructive",
-                    title: "Authentication Failed",
-                    description: "Could not save mock user session.",
-                });
-            } finally {
-                setIsLoading(false);
-            }
-        }, 1000);
+        handleAuthAction('email');
     };
 
     return (
@@ -77,6 +89,8 @@ export function AuthForm() {
                             type="email"
                             placeholder="m@example.com"
                             required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                         />
                     </div>
                     <div className="grid gap-2">
@@ -88,13 +102,19 @@ export function AuthForm() {
                                 </a>
                              )}
                         </div>
-                        <Input id="password" type="password" required />
+                        <Input 
+                            id="password" 
+                            type="password" 
+                            required 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                          {isLogin ? 'Login' : 'Create an account'}
                     </Button>
-                    <Button variant="outline" className="w-full" type="button" disabled={isLoading}>
+                    <Button variant="outline" className="w-full" type="button" disabled={isLoading} onClick={() => handleAuthAction('google')}>
                         <GoogleIcon />
                         {isLogin ? 'Login with Google' : 'Sign up with Google'}
                     </Button>

@@ -19,20 +19,22 @@ import { User, LogOut } from "lucide-react";
 import { ImageEditor } from "@/components/studio/image-editor";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 const BRAND_PROFILE_KEY = "brandProfile";
-const AUTH_USER_KEY = 'mockAuthUser';
 
 function CreativeStudioPage() {
+    const [user, loading] = useAuthState(auth);
     const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
     const [editorImage, setEditorImage] = useState<string | null>(null);
     const router = useRouter();
     const { toast } = useToast();
 
     useEffect(() => {
-        // Check for auth user
-        const authUser = localStorage.getItem(AUTH_USER_KEY);
-        if (!authUser) {
+        if (loading) return;
+        if (!user) {
           router.push('/login');
           return;
         }
@@ -41,15 +43,24 @@ function CreativeStudioPage() {
         if (storedProfile) {
             setBrandProfile(JSON.parse(storedProfile));
         }
-    }, [router]);
+    }, [user, loading, router]);
     
-    const handleLogout = () => {
-        localStorage.removeItem(AUTH_USER_KEY);
+    const handleLogout = async () => {
+        await signOut(auth);
         localStorage.removeItem(BRAND_PROFILE_KEY);
         router.push('/login');
         toast({ title: "Logged Out", description: "You have been successfully logged out." });
     };
 
+    if (loading) {
+        return (
+          <SidebarInset>
+              <main className="flex-1 flex items-center justify-center">
+                  <p>Loading Creative Studio...</p>
+              </main>
+          </SidebarInset>
+        );
+    }
 
   return (
     <SidebarInset>
@@ -60,8 +71,8 @@ function CreativeStudioPage() {
               <Button variant="secondary" size="icon" className="rounded-full">
                 <Avatar>
                   <AvatarImage
-                    src="https://placehold.co/40x40.png"
-                    alt="User"
+                    src={user?.photoURL || "https://placehold.co/40x40.png"}
+                    alt={user?.displayName || "User"}
                     data-ai-hint="user avatar"
                   />
                   <AvatarFallback><User /></AvatarFallback>
@@ -70,7 +81,7 @@ function CreativeStudioPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>{user?.email || "My Account"}</DropdownMenuLabel>
                <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />

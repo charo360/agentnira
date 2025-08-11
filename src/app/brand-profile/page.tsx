@@ -11,26 +11,28 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Bot, User, LogOut } from "lucide-react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 
 const BRAND_PROFILE_KEY = "brandProfile";
-const AUTH_USER_KEY = 'mockAuthUser';
 
 function BrandProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [user, loading] = useAuthState(auth);
   const [brandProfile, setBrandProfile] = React.useState<BrandProfile | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isProfileLoading, setIsProfileLoading] = React.useState(true);
 
   React.useEffect(() => {
-    // Check for auth user
-    const authUser = localStorage.getItem(AUTH_USER_KEY);
-    if (!authUser) {
+    if (loading) return;
+    if (!user) {
       router.push('/login');
       return;
     }
 
-    setIsLoading(true);
+    setIsProfileLoading(true);
     try {
       const storedProfile = localStorage.getItem(BRAND_PROFILE_KEY);
       if (storedProfile) {
@@ -44,9 +46,9 @@ function BrandProfilePage() {
         description: "Could not read your profile from local storage. It might be corrupted.",
       });
     } finally {
-      setIsLoading(false);
+      setIsProfileLoading(false);
     }
-  }, [toast, router]);
+  }, [user, loading, toast, router]);
 
   const handleProfileSaved = async (profile: BrandProfile) => {
     try {
@@ -72,12 +74,22 @@ function BrandProfilePage() {
     }
   };
   
-  const handleLogout = () => {
-    localStorage.removeItem(AUTH_USER_KEY);
+  const handleLogout = async () => {
+    await signOut(auth);
     localStorage.removeItem(BRAND_PROFILE_KEY); // Also clear brand profile on logout
     router.push('/login');
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
   };
+
+  if (loading || isProfileLoading) {
+     return (
+        <SidebarInset>
+            <main className="flex-1 flex items-center justify-center">
+                <p>Loading Profile...</p>
+            </main>
+        </SidebarInset>
+     );
+  }
 
   return (
       <SidebarInset>
@@ -86,14 +98,14 @@ function BrandProfilePage() {
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">
                 <Avatar>
-                  <AvatarImage src="https://placehold.co/40x40.png" alt="User" data-ai-hint="user avatar" />
+                  <AvatarImage src={user?.photoURL || "https://placehold.co/40x40.png"} alt={user?.displayName || "User"} data-ai-hint="user avatar" />
                   <AvatarFallback><User /></AvatarFallback>
                 </Avatar>
                 <span className="sr-only">Toggle user menu</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>{user?.email || "My Account"}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -103,16 +115,10 @@ function BrandProfilePage() {
           </DropdownMenu>
         </header>
         <main className="flex-1 overflow-auto p-4 lg:p-6">
-            {isLoading ? (
-                <div className="flex h-full items-center justify-center">
-                    <p>Loading Profile...</p>
-                </div>
-            ) : (
-                <BrandSetup 
-                    initialProfile={brandProfile} 
-                    onProfileSaved={handleProfileSaved} 
-                />
-            )}
+            <BrandSetup 
+                initialProfile={brandProfile} 
+                onProfileSaved={handleProfileSaved} 
+            />
         </main>
       </SidebarInset>
   );
