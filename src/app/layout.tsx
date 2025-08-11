@@ -77,7 +77,7 @@ export default function RootLayout({
   if (loading) {
       return (
         <html lang="en" suppressHydrationWarning>
-            <body className="font-body antialiased">
+            <body className="font-body antialiased" suppressHydrationWarning>
                  <div className="flex h-screen w-full items-center justify-center">
                     <p>Loading...</p>
                  </div>
