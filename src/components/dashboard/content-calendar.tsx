@@ -2,7 +2,8 @@
 "use client";
 
 import React from "react";
-import { Loader2, Facebook, Instagram, Linkedin, Twitter } from "lucide-react";
+import Link from 'next/link';
+import { Loader2, Facebook, Instagram, Linkedin, Twitter, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/dashboard/post-card";
 import { generateContentAction } from "@/app/actions";
@@ -11,7 +12,7 @@ import type { BrandProfile, GeneratedPost, Platform, NewGeneratedPost } from "@/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type ContentCalendarProps = {
-  brandProfile: BrandProfile;
+  brandProfile: BrandProfile | null;
   posts: GeneratedPost[];
   onPostGenerated: (post: NewGeneratedPost) => void;
   onPostUpdated: (post: GeneratedPost) => void;
@@ -29,6 +30,14 @@ export function ContentCalendar({ brandProfile, posts, onPostGenerated, onPostUp
   const { toast } = useToast();
 
   const handleGenerateClick = async (platform: Platform) => {
+    if (!brandProfile) {
+        toast({
+            variant: "destructive",
+            title: "Brand Profile Required",
+            description: "Please set up your brand profile before generating content.",
+        });
+        return;
+    }
     setIsGenerating(platform);
     try {
       const newPost = await generateContentAction(brandProfile, platform);
@@ -48,18 +57,46 @@ export function ContentCalendar({ brandProfile, posts, onPostGenerated, onPostUp
     }
   };
 
+  const renderEmptyState = () => {
+    if (!brandProfile) {
+        return (
+            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card p-12 text-center">
+                <Sparkles className="h-12 w-12 text-primary/70 mb-4" />
+                <h3 className="text-xl font-semibold">Welcome to Quick Content!</h3>
+                <p className="text-muted-foreground mt-2 mb-4">
+                    To start generating tailored social media posts, you first need to set up your brand profile.
+                </p>
+                <Button asChild>
+                    <Link href="/brand-profile">Set Up Brand Profile</Link>
+                </Button>
+            </div>
+        );
+    }
+    if (posts.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card p-12 text-center">
+              <h3 className="text-xl font-semibold">Your calendar is empty</h3>
+              <p className="text-muted-foreground mt-2">
+                Click the "Generate New Post" button to create your first social media post!
+              </p>
+            </div>
+        );
+    }
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight font-headline">Content Calendar</h1>
           <p className="text-muted-foreground">
-            Here's your generated content. Click a post to edit or regenerate.
+            Generate and manage your social media content from one place.
           </p>
         </div>
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button disabled={!!isGenerating}>
+                <Button disabled={!!isGenerating || !brandProfile}>
                     {isGenerating ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -87,18 +124,13 @@ export function ContentCalendar({ brandProfile, posts, onPostGenerated, onPostUp
             <PostCard 
               key={post.id} 
               post={post} 
-              brandProfile={brandProfile} 
+              brandProfile={brandProfile!} 
               onPostUpdated={onPostUpdated} 
             />
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card p-12 text-center">
-          <h3 className="text-xl font-semibold">Your calendar is empty</h3>
-          <p className="text-muted-foreground mt-2">
-            Click the "Generate" button to create your first social media post!
-          </p>
-        </div>
+        renderEmptyState()
       )}
     </div>
   );

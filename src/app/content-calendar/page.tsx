@@ -44,17 +44,12 @@ function ContentCalendarPage() {
         setIsDataLoading(true);
         try {
             const profile = await getBrandProfile(user.uid);
+            // We set the profile, which can be null if it doesn't exist.
+            // The ContentCalendar component will handle the null case.
+            setBrandProfile(profile);
             if (profile) {
-                setBrandProfile(profile);
                 const posts = await getGeneratedPosts(user.uid);
                 setGeneratedPosts(posts);
-            } else {
-                toast({
-                    title: "Brand Profile Required",
-                    description: "Redirecting you to set up your brand profile first.",
-                    variant: "destructive"
-                });
-                router.push('/brand-profile');
             }
         } catch (error) {
            toast({
@@ -145,18 +140,12 @@ function ContentCalendarPage() {
           </DropdownMenu>
         </header>
         <main className="flex-1 overflow-auto p-4 lg:p-6">
-          {!brandProfile ? (
-            <div className="flex h-full items-center justify-center">
-              <p>Loading Content Calendar...</p>
-            </div>
-          ) : (
             <ContentCalendar
               brandProfile={brandProfile}
               posts={generatedPosts}
               onPostGenerated={handlePostGenerated}
               onPostUpdated={handlePostUpdated}
             />
-          )}
         </main>
       </SidebarInset>
   );
