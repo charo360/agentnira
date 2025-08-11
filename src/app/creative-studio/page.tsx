@@ -22,37 +22,51 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-
-const BRAND_PROFILE_KEY = "brandProfile";
+import { getBrandProfile } from "@/app/actions";
 
 function CreativeStudioPage() {
-    const [user, loading] = useAuthState(auth);
+    const [user, authLoading] = useAuthState(auth);
     const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
+    const [isProfileLoading, setIsProfileLoading] = useState(true);
     const [editorImage, setEditorImage] = useState<string | null>(null);
     const router = useRouter();
     const { toast } = useToast();
 
     useEffect(() => {
-        if (loading) return;
+        if (authLoading) return;
         if (!user) {
           router.push('/login');
           return;
         }
 
-        const storedProfile = localStorage.getItem(BRAND_PROFILE_KEY);
-        if (storedProfile) {
-            setBrandProfile(JSON.parse(storedProfile));
-        }
-    }, [user, loading, router]);
+        const fetchProfile = async () => {
+            setIsProfileLoading(true);
+            try {
+                const profile = await getBrandProfile(user.uid);
+                setBrandProfile(profile);
+            } catch (error) {
+                toast({
+                    variant: "destructive",
+                    title: "Failed to load profile",
+                    description: "Could not load your brand profile for the creative studio.",
+                });
+            } finally {
+                setIsProfileLoading(false);
+            }
+        };
+        fetchProfile();
+    }, [user, authLoading, router, toast]);
     
     const handleLogout = async () => {
         await signOut(auth);
-        localStorage.removeItem(BRAND_PROFILE_KEY);
+        localStorage.removeItem("brandProfileTheme"); // Also clear theme on logout
         router.push('/login');
         toast({ title: "Logged Out", description: "You have been successfully logged out." });
     };
 
-    if (loading) {
+    const isLoading = authLoading || isProfileLoading;
+
+    if (isLoading) {
         return (
           <SidebarInset>
               <main className="flex-1 flex items-center justify-center">
