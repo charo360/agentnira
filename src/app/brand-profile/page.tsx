@@ -52,6 +52,7 @@ function BrandProfilePage() {
 
   const handleProfileSaved = async (profile: BrandProfile) => {
     try {
+        const isFirstSave = !brandProfile;
         localStorage.setItem(BRAND_PROFILE_KEY, JSON.stringify(profile));
         setBrandProfile(profile);
         toast({
@@ -59,12 +60,13 @@ function BrandProfilePage() {
             description: "Your brand profile has been updated successfully.",
         });
         
-        // Force a reload to apply theme colors globally from layout
+        // Reload to apply theme colors if they changed
         window.location.reload();
-
-         if(!brandProfile) { // If it was the first time saving
+        
+        if (isFirstSave) {
             router.push('/content-calendar');
         }
+
     } catch (error) {
         toast({
             variant: "destructive",

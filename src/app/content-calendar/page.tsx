@@ -54,8 +54,8 @@ function ContentCalendarPage() {
         }
       } else {
         toast({
-            title: "Brand Profile Not Found",
-            description: "Please set up your brand profile first.",
+            title: "Brand Profile Required",
+            description: "Redirecting you to set up your brand profile first.",
             variant: "destructive"
         });
         router.push('/brand-profile');
