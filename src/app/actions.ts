@@ -135,10 +135,36 @@ export async function generateCreativeAssetAction(
 
 // --- Firestore Actions ---
 
+const cleanUndefined = (obj: any): any => {
+    if (obj === null || obj === undefined) {
+        return null;
+    }
+    if (typeof obj !== 'object') {
+        return obj;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(v => cleanUndefined(v)).filter(v => v !== null);
+    }
+    const cleaned = Object.entries(obj)
+        .map(([key, value]) => [key, cleanUndefined(value)])
+        .reduce((acc, [key, value]) => {
+            if (value !== undefined && value !== null) {
+                (acc as any)[key] = value;
+            }
+            return acc;
+        }, {});
+
+    return Object.keys(cleaned).length > 0 ? cleaned : null;
+};
+
 export async function saveBrandProfile(userId: string, profile: BrandProfile): Promise<void> {
     try {
         const profileRef = doc(db, "profiles", userId);
-        await setDoc(profileRef, profile);
+        const cleanedProfile = cleanUndefined(profile);
+        if (!cleanedProfile) {
+             throw new Error("Cleaned profile data is empty.");
+        }
+        await setDoc(profileRef, cleanedProfile, { merge: true });
     } catch (error) {
         console.error("Error saving brand profile:", error);
         throw new Error("Could not save your brand profile to the database.");

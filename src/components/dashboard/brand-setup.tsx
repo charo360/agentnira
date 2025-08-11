@@ -29,8 +29,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { BrandAnalysisResult, BrandProfile } from "@/lib/types";
-import { analyzeBrandAction } from "@/app/actions";
+import { analyzeBrandAction, saveBrandProfile } from "@/app/actions";
 import Image from "next/image";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase";
 
 // Helper to convert hex to HSL string
 const hexToHslString = (hex: string): string => {
@@ -108,10 +110,11 @@ const formSchema = z.object({
 
 type BrandSetupProps = {
   initialProfile: BrandProfile | null;
-  onProfileSaved: (profile: BrandProfile) => Promise<void>;
+  onProfileSaved: (profile: BrandProfile) => void;
 };
 
 export function BrandSetup({ initialProfile, onProfileSaved }: BrandSetupProps) {
+  const [user] = useAuthState(auth);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [analysisResult, setAnalysisResult] = React.useState<BrandAnalysisResult | null>(initialProfile ? {
@@ -259,24 +262,24 @@ export function BrandSetup({ initialProfile, onProfileSaved }: BrandSetupProps) 
   }
 
   const handleSaveProfile = async () => {
+    if (!user) {
+        toast({ variant: "destructive", title: "Not Authenticated", description: "You must be logged in to save." });
+        return;
+    }
+    
     const formValues = form.getValues();
-     if (!logoDataUrl) {
-        toast({
-            variant: "destructive",
-            title: "Missing Logo",
-            description: "Please upload a logo to continue."
-        });
+    
+    if (!logoDataUrl) {
+        toast({ variant: "destructive", title: "Missing Logo", description: "Please upload a logo." });
         return;
     }
     if (!formValues.visualStyle || !formValues.writingTone || !formValues.contentThemes) {
-        toast({
-            variant: "destructive",
-            title: "Analysis Required",
-            description: "Please run the brand analysis or fill in the Visual Style, Writing Tone, and Content Themes manually."
-        });
+        toast({ variant: "destructive", title: "Analysis Required", description: "Please run brand analysis or fill in identity fields." });
         return;
     }
 
+    // Explicitly construct the profile object to avoid sending form-only fields
+    // and to handle optional fields correctly.
     const profile: BrandProfile = {
       businessName: formValues.businessName,
       businessType: formValues.businessType,
@@ -289,21 +292,31 @@ export function BrandSetup({ initialProfile, onProfileSaved }: BrandSetupProps) 
       primaryColor: formValues.primaryColor ? hexToHslString(formValues.primaryColor) : undefined,
       accentColor: formValues.accentColor ? hexToHslString(formValues.accentColor) : undefined,
       backgroundColor: formValues.backgroundColor ? hexToHslString(formValues.backgroundColor) : undefined,
-      description: formValues.description,
-      services: formValues.services,
-      targetAudience: formValues.targetAudience,
-      keyFeatures: formValues.keyFeatures,
-      competitiveAdvantages: formValues.competitiveAdvantages,
+      description: formValues.description || undefined,
+      services: formValues.services || undefined,
+      targetAudience: formValues.targetAudience || undefined,
+      keyFeatures: formValues.keyFeatures || undefined,
+      competitiveAdvantages: formValues.competitiveAdvantages || undefined,
       contactInfo: {
-        phone: formValues.contactPhone,
-        email: formValues.contactEmail,
-        address: formValues.contactAddress,
+        phone: formValues.contactPhone || undefined,
+        email: formValues.contactEmail || undefined,
+        address: formValues.contactAddress || undefined,
       },
     };
     
     setIsSaving(true);
-    await onProfileSaved(profile);
-    setIsSaving(false);
+    try {
+        await saveBrandProfile(user.uid, profile);
+        onProfileSaved(profile); // Call the callback to trigger navigation/reload
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Failed to save profile",
+            description: (error as Error).message,
+        });
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   return (
@@ -315,7 +328,7 @@ export function BrandSetup({ initialProfile, onProfileSaved }: BrandSetupProps) 
         </p>
       </div>
        <Form {...form}>
-        <form className="space-y-6">
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Business Basics</CardTitle>
@@ -488,7 +501,7 @@ export function BrandSetup({ initialProfile, onProfileSaved }: BrandSetupProps) 
           </Card>
 
           <div className="flex justify-end">
-            <Button type="button" onClick={handleSaveProfile} size="lg" disabled={isSaving || !logoDataUrl || !form.getValues().visualStyle}>
+            <Button type="button" onClick={handleSaveProfile} size="lg" disabled={isSaving}>
                 {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : (initialProfile ? "Save Changes" : "Save Brand Profile & Continue")}
             </Button>
           </div>
